@@ -16,10 +16,22 @@ os.environ.pop("RSCFORGE_EXPORT_TOKEN", None)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from rscforge import resolver  # noqa: E402
 from rscforge.main import app  # noqa: E402
+
+RESOLVED = {
+    "example.com": ["203.0.113.10"],
+    "ads.example.com": ["203.0.113.11"],
+}
+
+
+async def fake_resolve_domains(domains):
+    return {domain: RESOLVED.get(domain, []) for domain in domains}
 
 
 def main() -> None:
+    # Keep the smoke test deterministic: no real DNS lookups.
+    resolver.resolve_domains = fake_resolve_domains
     with TestClient(app) as client:
         assert client.get("/healthz").status_code == 200
 
@@ -51,9 +63,11 @@ def main() -> None:
         preview = client.get("/api/export/preview")
         assert preview.status_code == 200
         content = preview.json()["content"]
-        assert "address=example.com" in content
+        assert "address=203.0.113.10" in content
+        assert "rscforge:example.com" in content
         assert "address=1.2.3.0/24" in content
-        assert "address=ads.example.com" in content
+        assert "address=203.0.113.11" in content
+        assert "comment=\"rscforge:ads.example.com\"" in content
 
         settings = client.get("/api/settings").json()
         values = settings["values"]
@@ -67,7 +81,7 @@ def main() -> None:
 
         export = client.get("/export.rsc")
         assert export.status_code == 200
-        assert "address=example.com" in export.text
+        assert "address=203.0.113.10" in export.text
 
         deleted = client.delete(f"/api/sources/{source['id']}")
         assert deleted.status_code == 204

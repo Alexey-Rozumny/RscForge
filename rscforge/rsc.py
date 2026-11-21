@@ -25,12 +25,24 @@ def _clean_comment(value: str) -> str:
     return value[:100]
 
 
-def _comment(entry: dict) -> str:
+def _entry_label(entry: dict) -> str:
     label = (entry.get("comment") or "").strip()
     if not label:
         source = (entry.get("source_name") or "").strip()
         label = f"src={source}" if source else "manual"
-    return f"{COMMENT_PREFIX}{_clean_comment(label)}"
+    return label
+
+
+def _domain_label(entry: dict, domain: str) -> str:
+    label = (entry.get("comment") or "").strip()
+    if label and label != domain:
+        return f"{domain} ({label})"
+    return domain
+
+
+def _comment(labels: list[str]) -> str:
+    unique = list(dict.fromkeys(label for label in labels if label))
+    return f"{COMMENT_PREFIX}{_clean_comment(', '.join(unique))}"
 
 
 def _ip_sort_key(entry: dict) -> tuple:
@@ -41,7 +53,28 @@ def _ip_sort_key(entry: dict) -> tuple:
         return (9, 0, 0)
 
 
-def generate_rsc(entries: list[dict], settings: dict[str, str]) -> tuple[str, dict]:
+def domain_targets(entries: list[dict], settings: dict[str, str]) -> set[str]:
+    """Return domain names that need to be resolved for this export."""
+    wildcard_policy = settings.get("wildcard_policy") or "skip"
+    targets: set[str] = set()
+    for entry in entries:
+        if entry.get("kind") != "domain":
+            continue
+        normalized = entry.get("normalized") or ""
+        if normalized.startswith("*."):
+            if wildcard_policy != "base-domain":
+                continue
+            normalized = normalized[2:]
+        if normalized:
+            targets.add(normalized)
+    return targets
+
+
+def generate_rsc(
+    entries: list[dict],
+    settings: dict[str, str],
+    resolved: dict[str, list[str]],
+) -> tuple[str, dict]:
     list_name = (settings.get("list_name") or "vpn-filter").strip()
     include_pbr = _as_bool(settings.get("include_pbr"))
     wildcard_policy = settings.get("wildcard_policy") or "skip"
@@ -52,10 +85,16 @@ def generate_rsc(entries: list[dict], settings: dict[str, str]) -> tuple[str, di
     connection_mark = (settings.get("connection_mark") or f"{list_name}-con").strip()
     local_networks = (settings.get("local_networks_list") or "local-networks").strip()
 
-    exported: list[tuple[str, dict]] = []
+    # address -> comment labels (domains and/or manual labels)
+    addresses: dict[str, list[str]] = {}
     seen: set[str] = set()
     skipped_wildcards = 0
     duplicates = 0
+    domains = 0
+    resolved_domains = 0
+    unresolved_domains = 0
+    resolved_ips = 0
+    ip_entries = 0
 
     for entry in entries:
         normalized = entry["normalized"]
@@ -71,14 +110,24 @@ def generate_rsc(entries: list[dict], settings: dict[str, str]) -> tuple[str, di
             duplicates += 1
             continue
         seen.add(normalized)
-        exported.append((normalized, entry))
 
-    domains = sorted(
-        ((address, entry) for address, entry in exported if entry["kind"] == "domain"),
-        key=lambda item: item[0],
-    )
-    ip_entries = sorted(
-        ((address, entry) for address, entry in exported if entry["kind"] != "domain"),
+        if entry["kind"] == "domain":
+            domains += 1
+            ips = resolved.get(normalized) or []
+            if not ips:
+                unresolved_domains += 1
+                continue
+            resolved_domains += 1
+            resolved_ips += len(ips)
+            label = _domain_label(entry, normalized)
+            for address in ips:
+                addresses.setdefault(address, []).append(label)
+        else:
+            ip_entries += 1
+            addresses.setdefault(normalized, []).append(_entry_label(entry))
+
+    ordered = sorted(
+        addresses.items(),
         key=lambda item: _ip_sort_key({"normalized": item[0]}),
     )
 
@@ -87,8 +136,14 @@ def generate_rsc(entries: list[dict], settings: dict[str, str]) -> tuple[str, di
         "# RscForge export",
         f"# generated: {now}",
         f"# list: {list_name}",
-        f"# entries: {len(exported)} (domains: {len(domains)}, ip/cidr: {len(ip_entries)})",
+        f"# entries: {len(ordered)} "
+        f"(resolved domains: {resolved_domains}, "
+        f"ip/cidr: {ip_entries}, "
+        f"unresolved domains: {unresolved_domains})",
+        f"# resolved IPs from domains: {resolved_ips}",
     ]
+    if unresolved_domains:
+        lines.append(f"# unresolved domains: {unresolved_domains}")
     if skipped_wildcards:
         lines.append(f"# skipped wildcard domains: {skipped_wildcards}")
     if include_pbr and not vpn_gateway:
@@ -99,10 +154,10 @@ def generate_rsc(entries: list[dict], settings: dict[str, str]) -> tuple[str, di
     lines.append(
         f'remove [find list={_quote(list_name)} comment~{_quote("^" + COMMENT_PREFIX)}]'
     )
-    for address, entry in domains + ip_entries:
+    for address, labels in ordered:
         lines.append(
             f"add list={_quote(list_name)} address={address} "
-            f"comment={_quote(_comment(entry))}"
+            f"comment={_quote(_comment(labels))}"
         )
 
     if include_pbr:
@@ -141,9 +196,12 @@ def generate_rsc(entries: list[dict], settings: dict[str, str]) -> tuple[str, di
 
     content = "\n".join(lines).rstrip() + "\n"
     stats = {
-        "exported": len(exported),
-        "domains": len(domains),
-        "ip_entries": len(ip_entries),
+        "exported": len(ordered),
+        "domains": domains,
+        "resolved_domains": resolved_domains,
+        "unresolved_domains": unresolved_domains,
+        "resolved_ips": resolved_ips,
+        "ip_entries": ip_entries,
         "skipped_wildcards": skipped_wildcards,
         "duplicates": duplicates,
         "include_pbr": include_pbr,
