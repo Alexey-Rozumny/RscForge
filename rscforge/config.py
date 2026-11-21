@@ -18,6 +18,9 @@ class AppSettings:
     fetch_timeout: float
     max_fetch_bytes: int
     max_upload_bytes: int
+    dns_cache_ttl: float
+    dns_timeout: float
+    dns_concurrency: int
 
 
 def load_settings() -> AppSettings:
@@ -41,6 +44,9 @@ def load_settings() -> AppSettings:
         max_upload_bytes=int(
             os.getenv("RSCFORGE_MAX_UPLOAD_BYTES", str(16 * 1024 * 1024))
         ),
+        dns_cache_ttl=float(os.getenv("RSCFORGE_DNS_CACHE_TTL", "600")),
+        dns_timeout=float(os.getenv("RSCFORGE_DNS_TIMEOUT", "5")),
+        dns_concurrency=max(1, int(os.getenv("RSCFORGE_DNS_CONCURRENCY", "32"))),
     )
 
 

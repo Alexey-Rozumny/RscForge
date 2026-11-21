@@ -565,9 +565,13 @@
     const stats = data.stats;
     const parts = [
       `К экспорту: ${stats.exported}`,
-      `домены: ${stats.domains}`,
+      `домены: ${stats.resolved_domains}/${stats.domains}`,
+      `IP из доменов: ${stats.resolved_ips}`,
       `ip/cidr: ${stats.ip_entries}`,
     ];
+    if (stats.unresolved_domains) {
+      parts.push(`не разрешено: ${stats.unresolved_domains}`);
+    }
     if (stats.skipped_wildcards) {
       parts.push(`пропущено wildcard: ${stats.skipped_wildcards}`);
     }
