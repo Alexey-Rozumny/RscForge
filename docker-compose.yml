@@ -1,0 +1,17 @@
+services:
+  rscforge:
+    build: .
+    container_name: rscforge
+    restart: unless-stopped
+    ports:
+      - "${RSCFORGE_HTTP_PORT:-8080}:8000"
+    environment:
+      RSCFORGE_DATA_DIR: /data
+      RSCFORGE_USERNAME: ${RSCFORGE_USERNAME:-admin}
+      RSCFORGE_PASSWORD: ${RSCFORGE_PASSWORD:-}
+      RSCFORGE_EXPORT_TOKEN: ${RSCFORGE_EXPORT_TOKEN:-}
+    volumes:
+      - rscforge-data:/data
+
+volumes:
+  rscforge-data:
