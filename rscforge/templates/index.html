@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RscForge</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">RF</div>
+      <div>
+        <h1>RscForge</h1>
+        <p class="muted small">address-list для MikroTik · v{{ version }}</p>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="sources" type="button">Источники</button>
+    <button class="tab" data-tab="entries" type="button">Записи</button>
+    <button class="tab" data-tab="export" type="button">Экспорт</button>
+    <button class="tab" data-tab="settings" type="button">Настройки</button>
+  </nav>
+
+  <main>
+    <section id="panel-sources" class="panel active">
+      <div class="grid cols-2">
+        <form id="source-form" class="card">
+          <h2>Добавить URL-источник</h2>
+          <div class="field">
+            <label for="source-name">Название</label>
+            <input id="source-name" name="name" required maxlength="100" placeholder="Например, Blocklist">
+          </div>
+          <div class="field">
+            <label for="source-url">URL</label>
+            <input id="source-url" name="url" type="url" required placeholder="https://example.com/list.txt">
+          </div>
+          <div class="field">
+            <label for="source-interval">Интервал обновления, мин</label>
+            <input id="source-interval" name="refresh_interval_minutes" type="number" min="5" max="10080" value="60">
+          </div>
+          <button type="submit" class="primary">Добавить и загрузить</button>
+        </form>
+
+        <form id="upload-form" class="card">
+          <h2>Загрузить файл</h2>
+          <div class="field">
+            <label for="upload-name">Название</label>
+            <input id="upload-name" name="name" maxlength="100" placeholder="По умолчанию — имя файла">
+          </div>
+          <div class="field">
+            <label for="upload-file">Файл</label>
+            <input id="upload-file" name="file" type="file" accept=".txt,.csv,.list,.hosts,.conf" required>
+          </div>
+          <div class="field">
+            <label for="upload-interval">Интервал обновления, мин</label>
+            <input id="upload-interval" name="refresh_interval_minutes" type="number" min="5" max="10080" value="1440">
+          </div>
+          <button type="submit" class="primary">Загрузить</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Источники</h2>
+          <button id="refresh-all" class="ghost" type="button">Обновить все</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Название</th>
+                <th>Тип</th>
+                <th>Записей</th>
+                <th>Обновлён</th>
+                <th>Статус</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="sources-body">
+              <tr><td colspan="6" class="empty">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-entries" class="panel">
+      <form id="entry-form" class="card">
+        <h2>Добавить вручную</h2>
+        <div class="row">
+          <div class="field grow">
+            <label for="entry-value">Домены, IP или CIDR (по одному в строке)</label>
+            <textarea id="entry-value" name="value" rows="3" required placeholder="example.com&#10;1.2.3.0/24"></textarea>
+          </div>
+          <div class="field">
+            <label for="entry-comment">Комментарий</label>
+            <input id="entry-comment" name="comment" maxlength="200" placeholder="необязательно">
+          </div>
+          <button type="submit" class="primary">Добавить</button>
+        </div>
+      </form>
+
+      <div class="card">
+        <div class="filters">
+          <input id="filter-search" placeholder="Поиск по записи или комментарию">
+          <select id="filter-kind">
+            <option value="">Все типы</option>
+            <option value="domain">Домены</option>
+            <option value="ip">IP</option>
+            <option value="cidr">CIDR</option>
+          </select>
+          <select id="filter-source">
+            <option value="">Все источники</option>
+            <option value="manual">Ручные</option>
+          </select>
+          <select id="filter-enabled">
+            <option value="">Все</option>
+            <option value="1">Включённые</option>
+            <option value="0">Выключенные</option>
+          </select>
+          <button id="filter-apply" class="ghost" type="button">Применить</button>
+        </div>
+
+        <div class="card-head">
+          <div class="bulk">
+            <button id="bulk-enable" class="ghost" type="button" disabled>Включить</button>
+            <button id="bulk-disable" class="ghost" type="button" disabled>Выключить</button>
+            <button id="bulk-delete" class="danger" type="button" disabled>Удалить</button>
+          </div>
+          <span id="entries-count" class="muted"></span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="check"><input type="checkbox" id="select-all" aria-label="Выбрать все"></th>
+                <th>Запись</th>
+                <th>Тип</th>
+                <th>Источник</th>
+                <th>Вкл</th>
+                <th>Комментарий</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="entries-body">
+              <tr><td colspan="7" class="empty">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pager">
+          <button id="page-prev" class="ghost" type="button">← Назад</button>
+          <span id="page-info" class="muted"></span>
+          <button id="page-next" class="ghost" type="button">Вперёд →</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-export" class="panel">
+      <div class="grid cols-2">
+        <form id="export-form" class="card">
+          <h2>Параметры экспорта</h2>
+          <div class="grid cols-2">
+            <div class="field">
+              <label for="list-name">Имя address-list</label>
+              <input id="list-name" name="list_name" required>
+            </div>
+            <div class="field">
+              <label for="wildcard-policy">Wildcard-домены</label>
+              <select id="wildcard-policy" name="wildcard_policy">
+                <option value="skip">Пропускать</option>
+                <option value="base-domain">Экспортировать базовый домен</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="checkline">
+            <input id="include-pbr" name="include_pbr" type="checkbox">
+            Добавить PBR-правила (mangle + route)
+          </label>
+
+          <div class="grid cols-2">
+            <div class="field">
+              <label for="vpn-gateway">VPN-шлюз (IP или интерфейс)</label>
+              <input id="vpn-gateway" name="vpn_gateway" placeholder="10.8.0.1">
+            </div>
+            <div class="field">
+              <label for="routing-table">Routing table</label>
+              <input id="routing-table" name="routing_table">
+            </div>
+            <div class="field">
+              <label for="connection-mark">Connection mark</label>
+              <input id="connection-mark" name="connection_mark">
+            </div>
+            <div class="field">
+              <label for="routing-mark">Routing mark</label>
+              <input id="routing-mark" name="routing_mark">
+            </div>
+            <div class="field">
+              <label for="local-networks">Address-list локальной сети</label>
+              <input id="local-networks" name="local_networks_list">
+            </div>
+          </div>
+
+          <button type="submit" class="primary">Сохранить</button>
+        </form>
+
+        <div class="card">
+          <h2>Импорт на MikroTik</h2>
+          <pre id="import-hint" class="code small">Загрузка…</pre>
+          <p class="muted small">
+            Если включена Basic-аутентификация, добавьте в <code>fetch</code>
+            параметры <code>user=</code> и <code>password=</code>.
+            Если задан <code>RSCFORGE_EXPORT_TOKEN</code>, используйте
+            <code>?token=…</code> в URL.
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Предпросмотр .rsc</h2>
+          <div class="actions">
+            <button id="preview-btn" class="ghost" type="button">Обновить</button>
+            <a id="download-link" class="button primary" href="/api/export/download">Скачать .rsc</a>
+          </div>
+        </div>
+        <div id="export-stats" class="muted small"></div>
+        <pre id="export-preview" class="code">Загрузка…</pre>
+      </div>
+    </section>
+
+    <section id="panel-settings" class="panel">
+      <div class="card">
+        <h2>Сервис</h2>
+        <dl id="readonly-settings" class="kv"></dl>
+        <p class="muted small">
+          Пользователь, пароль и токен экспорта задаются переменными окружения
+          <code>RSCFORGE_USERNAME</code>, <code>RSCFORGE_PASSWORD</code> и
+          <code>RSCFORGE_EXPORT_TOKEN</code>. После изменения перезапустите контейнер.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+</body>
+</html>
