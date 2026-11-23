@@ -499,7 +499,7 @@
 
   function applySettings(values) {
     $("#list-name").value = values.list_name || "";
-    $("#wildcard-policy").value = values.wildcard_policy || "skip";
+    $("#wildcard-policy").value = values.wildcard_policy || "base-domain";
     $("#include-pbr").checked = Boolean(values.include_pbr);
     $("#vpn-gateway").value = values.vpn_gateway || "";
     $("#routing-table").value = values.routing_table || "";

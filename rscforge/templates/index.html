@@ -175,9 +175,14 @@
             <div class="field">
               <label for="wildcard-policy">Wildcard-домены</label>
               <select id="wildcard-policy" name="wildcard_policy">
+                <option value="base-domain">Резолвить базовый домен</option>
                 <option value="skip">Пропускать</option>
-                <option value="base-domain">Экспортировать базовый домен</option>
               </select>
+              <p class="muted small">
+                Для <code>*.example.com</code> будет разрешён только сам
+                <code>example.com</code>. Конкретные поддомены, перечисленные в
+                источниках, разрешаются каждый в свой IP.
+              </p>
             </div>
           </div>
 

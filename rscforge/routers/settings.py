@@ -19,7 +19,7 @@ def _public(values: dict[str, str]) -> dict:
         "connection_mark": values.get("connection_mark", "vpn-filter-con"),
         "routing_mark": values.get("routing_mark", "new-con"),
         "local_networks_list": values.get("local_networks_list", "local-networks"),
-        "wildcard_policy": values.get("wildcard_policy", "skip"),
+        "wildcard_policy": values.get("wildcard_policy", "base-domain"),
     }
 
 
