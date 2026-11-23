@@ -54,7 +54,7 @@ DEFAULT_SETTINGS = {
     "connection_mark": "vpn-filter-con",
     "routing_mark": "new-con",
     "local_networks_list": "local-networks",
-    "wildcard_policy": "skip",
+    "wildcard_policy": "base-domain",
 }
 
 

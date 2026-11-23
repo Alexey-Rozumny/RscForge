@@ -56,7 +56,13 @@ def _parse_ip(value: str) -> ParsedEntry | None:
 
 
 def _parse_domain(value: str) -> ParsedEntry | None:
-    value = value.strip().strip("\"'").strip().rstrip(".").lower()
+    value = (
+        value.strip()
+        .strip("\"'()[]{}<>,;«»")
+        .strip()
+        .rstrip(".")
+        .lower()
+    )
     if not value:
         return None
 

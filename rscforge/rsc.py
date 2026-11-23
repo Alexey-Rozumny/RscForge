@@ -55,7 +55,7 @@ def _ip_sort_key(entry: dict) -> tuple:
 
 def domain_targets(entries: list[dict], settings: dict[str, str]) -> set[str]:
     """Return domain names that need to be resolved for this export."""
-    wildcard_policy = settings.get("wildcard_policy") or "skip"
+    wildcard_policy = settings.get("wildcard_policy") or "base-domain"
     targets: set[str] = set()
     for entry in entries:
         if entry.get("kind") != "domain":
@@ -77,7 +77,7 @@ def generate_rsc(
 ) -> tuple[str, dict]:
     list_name = (settings.get("list_name") or "vpn-filter").strip()
     include_pbr = _as_bool(settings.get("include_pbr"))
-    wildcard_policy = settings.get("wildcard_policy") or "skip"
+    wildcard_policy = settings.get("wildcard_policy") or "base-domain"
 
     vpn_gateway = (settings.get("vpn_gateway") or "").strip()
     routing_mark = (settings.get("routing_mark") or list_name).strip()

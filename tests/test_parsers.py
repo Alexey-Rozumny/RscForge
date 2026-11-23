@@ -60,6 +60,13 @@ def test_wildcard_and_invalid_values() -> None:
     assert parse_value("*.bad*domain.example") is None
 
 
+def test_surrounding_punctuation() -> None:
+    for raw in ("(example.com)", "example.com,", "[example.com]", "«example.com»"):
+        parsed = parse_value(raw)
+        assert parsed is not None
+        assert parsed.normalized == "example.com"
+
+
 def test_ipv6_cidr() -> None:
     entry = parse_value("2001:db8::/32")
     assert entry is not None
